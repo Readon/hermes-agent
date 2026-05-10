@@ -144,8 +144,13 @@ class TestApplySessionModelOverride:
         assert rt["base_url"] == "https://api.anthropic.com"  # preserved
         assert rt["api_mode"] == "chat_completions"  # overwritten (not None)
 
-    def test_empty_string_overwrites(self):
-        """Empty string is not None — it should overwrite the config value."""
+    def test_empty_string_does_not_clobber_valid_value(self):
+        """Empty string override should NOT overwrite a valid resolved credential.
+
+        A stale /model switch on a named custom provider can store empty
+        api_key/base_url while the provider name is valid. Applying those
+        over valid resolved credentials breaks the session (see #23456).
+        """
         runner = _make_runner()
         sk = build_session_key(_make_source())
 
@@ -153,7 +158,7 @@ class TestApplySessionModelOverride:
             "model": "local-model",
             "provider": "custom",
             "api_key": "local-key",
-            "base_url": "",
+            "base_url": "",  # empty — should NOT overwrite valid base_url
             "api_mode": "chat_completions",
         }
 
@@ -163,7 +168,11 @@ class TestApplySessionModelOverride:
             {"provider": "anthropic", "api_key": "ant-key", "base_url": "https://api.anthropic.com", "api_mode": "anthropic_messages"},
         )
 
-        assert rt["base_url"] == ""  # empty string overwrites
+        # Empty string is falsy — should NOT overwrite the valid resolved value
+        assert rt["base_url"] == "https://api.anthropic.com"
+        # Non-empty values still apply
+        assert rt["api_key"] == "local-key"
+        assert rt["provider"] == "custom"
 
     def test_different_session_key_not_affected(self):
         runner = _make_runner()

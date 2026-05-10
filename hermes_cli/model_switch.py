@@ -889,7 +889,12 @@ def switch_model(
             # "ollama-launch" that resolve_runtime_provider doesn't know), keep existing
             # credentials. Otherwise use the resolved values (picks up credential rotation,
             # base_url adjustments for OpenCode, etc.).
-            if runtime.get("provider") != "custom":
+            # Named custom providers (custom:sglab, custom:ollama, etc.) resolve to
+            # provider="custom" with valid credentials from the pool or env vars.
+            # Allow those through so gateway sessions pick up the correct endpoint.
+            _resolved_provider = runtime.get("provider", "")
+            _has_creds = bool(runtime.get("api_key") and runtime.get("base_url"))
+            if _resolved_provider != "custom" or _has_creds:
                 api_key = runtime.get("api_key", "")
                 base_url = runtime.get("base_url", "")
                 api_mode = runtime.get("api_mode", "")
