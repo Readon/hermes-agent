@@ -12734,7 +12734,11 @@ class GatewayRunner:
         model = override.get("model", model)
         for key in ("provider", "api_key", "base_url", "api_mode"):
             val = override.get(key)
-            if val is not None:
+            # Skip empty-string overrides — a stale /model switch on a named
+            # custom provider can store empty api_key/base_url while the
+            # provider name itself is valid.  Applying empty credentials
+            # over valid resolved values breaks the session.
+            if val:
                 runtime_kwargs[key] = val
         return model, runtime_kwargs
 
